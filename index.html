@@ -5,13 +5,18 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>アイマス ブランドルーレット</title>
 		<style>
+			* {
+				box-sizing: border-box;
+			}
 			body {
 				font-family: sans-serif;
 				text-align: center;
-				margin-top: 30px;
+				margin: 0;
+				padding: 20px 10px;
 				background-color: #f0f4f8;
 			}
 			.container {
+				width: 100%;
 				max-width: 650px;
 				margin: 0 auto;
 				background: white;
@@ -19,11 +24,14 @@
 				border-radius: 12px;
 				box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 			}
+			h2 {
+				margin-top: 0;
+			}
 			.checkbox-group {
 				display: flex;
 				flex-wrap: wrap;
 				justify-content: center;
-				gap: 12px;
+				gap: 10px;
 				margin-bottom: 25px;
 			}
 			label {
@@ -46,35 +54,49 @@
 				margin-right: 6px;
 				transform: scale(1.1);
 			}
+
+			/* レスポンシブ対応のルーレット枠 */
 			.roulette-wrapper {
 				position: relative;
-				width: 360px;
-				height: 360px;
+				width: 100%;
+				max-width: 360px; /* 最大サイズを制限 */
+				aspect-ratio: 1 / 1; /* 縦横比を1:1に固定 */
 				margin: 0 auto 20px auto;
 			}
+
 			/* ルーレット上部の三角ポインター */
 			.pointer {
 				position: absolute;
-				top: -15px;
+				top: -5%; /* サイズに応じて位置を微調整 */
 				left: 50%;
 				transform: translateX(-50%);
 				width: 0;
 				height: 0;
-				border-left: 20px solid transparent;
-				border-right: 20px solid transparent;
-				border-top: 35px solid #e74c3c;
+				border-left: 15px solid transparent;
+				border-right: 15px solid transparent;
+				border-top: 30px solid #e74c3c;
 				z-index: 10;
 			}
+
+			/* Canvas自体を枠に合わせて伸縮させる */
 			canvas {
+				width: 100%;
+				height: 100%;
 				border-radius: 50%;
 				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+				display: block;
 			}
+
 			#result {
 				font-size: 3em;
 				font-weight: bold;
 				margin: 20px 0;
 				height: 1.2em;
 				color: #333;
+				/* 長い名前でも画面からはみ出さないようにする */
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
 			}
 			button {
 				padding: 15px 60px;
@@ -101,6 +123,26 @@
 				background-color: #bdc3c7;
 				box-shadow: 0 4px 0 #95a5a6;
 				cursor: not-allowed;
+			}
+
+			/* スマートフォン向けのスタイル調整 */
+			@media (max-width: 480px) {
+				.container {
+					padding: 20px 15px;
+				}
+				label {
+					font-size: 0.9em;
+					padding: 5px 10px;
+				}
+				#result {
+					font-size: 2.2em;
+					margin: 15px 0;
+				}
+				button {
+					padding: 12px 40px;
+					font-size: 1.1em;
+					width: 100%; /* スマホではボタンを押しやすいように横幅いっぱいにする */
+				}
 			}
 		</style>
 	</head>
@@ -203,7 +245,6 @@
 			let isSpinning = false;
 			let animationId = null;
 
-			// チェックボックスの状態を読み込んでルーレットデータを更新
 			function updateRoulette() {
 				if (isSpinning) return;
 
@@ -218,7 +259,6 @@
 				drawWheel();
 			}
 
-			// ルーレット盤の描画
 			function drawWheel() {
 				const centerX = canvas.width / 2;
 				const centerY = canvas.height / 2;
@@ -244,7 +284,6 @@
 					const startAngle = currentAngle + i * sliceAngle;
 					const endAngle = startAngle + sliceAngle;
 
-					// 扇型の描画（指定されたブランドカラーを適用）
 					ctx.beginPath();
 					ctx.moveTo(centerX, centerY);
 					ctx.arc(centerX, centerY, radius, startAngle, endAngle);
@@ -255,25 +294,22 @@
 					ctx.lineWidth = 2;
 					ctx.stroke();
 
-					// 文字の描画
 					ctx.save();
 					ctx.translate(centerX, centerY);
 					ctx.rotate(startAngle + sliceAngle / 2);
 					ctx.textAlign = "right";
 
-					// 黄色や水色の上でも文字が見えるよう「白フチ＋黒文字」に装飾
 					ctx.font = "bold 18px sans-serif";
 					ctx.lineJoin = "round";
 					ctx.lineWidth = 4;
 					ctx.strokeStyle = "#fff";
-					ctx.strokeText(activeItems[i].text, radius - 20, 6); // 白い縁取り
+					ctx.strokeText(activeItems[i].text, radius - 20, 6);
 					ctx.fillStyle = "#111";
-					ctx.fillText(activeItems[i].text, radius - 20, 6); // 中身の黒文字
+					ctx.fillText(activeItems[i].text, radius - 20, 6);
 
 					ctx.restore();
 				}
 
-				// 中央のピン
 				ctx.beginPath();
 				ctx.arc(centerX, centerY, 15, 0, Math.PI * 2);
 				ctx.fillStyle = "#fff";
@@ -283,18 +319,16 @@
 				ctx.stroke();
 			}
 
-			// アニメーション
 			function animate() {
 				if (!isSpinning) return;
 
 				currentAngle += angularVelocity;
-				angularVelocity *= 0.985; // 減速率
+				angularVelocity *= 0.985;
 
 				if (angularVelocity < 0.002) {
 					isSpinning = false;
 					spinButton.disabled = false;
 
-					// ポインター位置（真上）から当選項目を計算
 					const normalizedAngle = currentAngle % (Math.PI * 2);
 					const pointerAngle =
 						(1.5 * Math.PI - normalizedAngle + Math.PI * 2) %
@@ -304,8 +338,8 @@
 
 					const winner = activeItems[winningIndex];
 					resultDiv.innerText = winner.text;
-					resultDiv.style.color = winner.color; // 結果の文字色もブランドカラーにする
-					resultDiv.style.textShadow = "2px 2px 4px rgba(0,0,0,0.15)"; // 黄色対策の影
+					resultDiv.style.color = winner.color;
+					resultDiv.style.textShadow = "2px 2px 4px rgba(0,0,0,0.15)";
 
 					cancelAnimationFrame(animationId);
 					return;
@@ -330,13 +364,11 @@
 				resultDiv.style.color = "#333";
 				resultDiv.style.textShadow = "none";
 
-				// ランダムな初速
 				angularVelocity = Math.random() * 0.25 + 0.45;
 
 				animate();
 			}
 
-			// 初回読み込み
 			updateRoulette();
 		</script>
 	</body>
