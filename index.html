@@ -154,22 +154,30 @@
 				position: fixed; inset: 0; z-index: 30; overflow: hidden;
 				pointer-events: none; isolation: isolate; color: #fff;
 				background: radial-gradient(ellipse at 65% 40%, #242039 0%, #070810 70%);
-				animation: reversal-darkness 4s linear both paused;
+				animation: confirmation-darkness 4s linear both paused;
 				animation-delay: var(--reversal-time, 0ms);
 			}
 			#reversalTestControls { margin: 0 0 24px; }
+			#reversalTestOutcome { margin: 10px auto 0; padding: 8px 12px; font: inherit; }
 			#soundControls { margin: 20px 0 0; font-size: 0.85rem; }
 			.reversal-sidem, .reversal-title {
 				position: absolute; inset: 0; display: grid; place-content: center;
 				font-weight: 900;
 			}
 			.reversal-sidem {
-				font-size: clamp(4rem, 19vw, 12rem); color: #78958e;
+				font-size: clamp(1.8rem, 9vw, 6rem); color: #78958e;
+				padding: 0 16px; overflow-wrap: anywhere;
 				letter-spacing: -0.06em;
-				animation: reversal-split 4s linear both paused;
+				animation: confirmation-label 4s linear both paused;
 			}
-			.reversal-sidem.upper { clip-path: polygon(0 0, 100% 0, 100% 30%, 0 70%); --split: -1; }
-			.reversal-sidem.lower { clip-path: polygon(0 70%, 100% 30%, 100% 100%, 0 100%); --split: 1; }
+			#reversalEffect[data-outcome="reverse"] { animation-name: reversal-darkness; }
+			#reversalEffect[data-outcome="reverse"] .reversal-sidem { animation-name: reversal-split; }
+			#reversalEffect[data-outcome="reverse"] .upper { clip-path: polygon(0 0, 100% 0, 100% 30%, 0 70%); --split: -1; }
+			#reversalEffect[data-outcome="reverse"] .lower { clip-path: polygon(0 70%, 100% 30%, 100% 100%, 0 100%); --split: 1; }
+			#reversalEffect:not([data-outcome="reverse"]) .lower,
+			#reversalEffect:not([data-outcome="reverse"]) .reversal-comet,
+			#reversalEffect:not([data-outcome="reverse"]) .reversal-aura,
+			#reversalEffect:not([data-outcome="reverse"]) .reversal-title { display: none; }
 			.reversal-comet {
 				position: absolute; left: 115%; top: 12%; width: 16px; height: 16px;
 				border-radius: 50%; background: #fff;
@@ -199,6 +207,12 @@
 			#reversalEffect > * { animation-delay: var(--reversal-time, 0ms); }
 			@keyframes reversal-darkness {
 				0%, 25% { opacity: 0; } 38%, 87.5% { opacity: 1; } 100% { opacity: 0; }
+			}
+			@keyframes confirmation-darkness {
+				0%, 25% { opacity: 0; } 38%, 57.5% { opacity: 1; } 70%, 100% { opacity: 0; }
+			}
+			@keyframes confirmation-label {
+				0%, 25% { opacity: 1; } 40%, 100% { opacity: 0.65; }
 			}
 			@keyframes reversal-split {
 				0%, 25% { opacity: 1; transform: translate(0, 0); }
@@ -321,7 +335,11 @@
 			</div>
 
 			<div id="reversalTestControls" hidden>
-				<label><input id="reversalTest" type="checkbox" />SideM → コメティック 演出テスト</label>
+				<label><input id="reversalTest" type="checkbox" />SideM 暗転演出テスト</label>
+				<select id="reversalTestOutcome" aria-label="暗転演出テストの結果" hidden>
+					<option value="reverse">逆転成功</option>
+					<option value="keep">変化なし</option>
+				</select>
 			</div>
 			<div class="roulette-wrapper">
 				<div class="pointer"></div>
@@ -334,8 +352,8 @@
 			<div id="soundControls"><label><input id="soundEnabled" type="checkbox" checked />効果音</label></div>
 		</div>
 		<div id="reversalEffect" aria-hidden="true" hidden>
-			<div class="reversal-sidem upper">SideM</div>
-			<div class="reversal-sidem lower">SideM</div>
+			<div id="stoppedLabelUpper" class="reversal-sidem upper"></div>
+			<div id="stoppedLabelLower" class="reversal-sidem lower"></div>
 			<div class="reversal-comet"></div>
 			<div class="reversal-aura"></div>
 			<div class="reversal-title"><small>THE COMET HAS ARRIVED</small><strong>CoMETIK</strong><span>コメティック</span></div>
@@ -351,12 +369,17 @@
 			const spinButton = document.getElementById("spinButton");
 			const rouletteTitle = document.getElementById("rouletteTitle");
 			const brandCheckboxes = document.querySelectorAll('.checkbox-group input[type="checkbox"]');
-			const unitChanceProbability = 0.2;
+			const sideMReversalProbability = 0.2;
 			const brandChanceProbability = 0.05;
 			const cometEffect = document.getElementById("cometEffect");
 			const reversalEffect = document.getElementById("reversalEffect");
 			const reversalTestControls = document.getElementById("reversalTestControls");
 			const reversalTest = document.getElementById("reversalTest");
+			const reversalTestOutcome = document.getElementById("reversalTestOutcome");
+			const stoppedLabels = [document.getElementById("stoppedLabelUpper"), document.getElementById("stoppedLabelLower")];
+			reversalTest.addEventListener("change", () => {
+				reversalTestOutcome.hidden = !reversalTest.checked;
+			});
 			const soundEnabled = document.getElementById("soundEnabled");
 			let audioContext = null;
 			let audioMaster = null;
@@ -447,7 +470,11 @@
 				wheelItems = activeItems;
 				const hasSideM = activeItems.some((item) => item.text === "SideM");
 				reversalTestControls.hidden = !hasSideM;
-				if (!hasSideM) reversalTest.checked = false;
+				if (!hasSideM) {
+					reversalTest.checked = false;
+					reversalTestOutcome.value = "reverse";
+				}
+				reversalTestOutcome.hidden = !reversalTest.checked;
 				clearCometEffect();
 				reversalEffect.hidden = true;
 				rouletteTitle.textContent = isShinyOnly
@@ -542,27 +569,36 @@
 			function finishSpin() {
 				isSpinning = false;
 				reversalTest.disabled = false;
+				reversalTestOutcome.disabled = false;
 				spinButton.disabled = false;
 				brandCheckboxes.forEach((cb) => { cb.disabled = false; });
 			}
 
-			function reverseSideM(winningIndex) {
+			function confirmBrand(winningIndex) {
 				const stoppedAt = performance.now();
+				const winner = wheelItems[winningIndex];
+				const reverse = winner.text === "SideM" && (reversalTest.checked
+					? reversalTestOutcome.value === "reverse"
+					: Math.random() < sideMReversalProbability);
+				const finalWinner = reverse ? shinyUnits.find((item) => item.text === "コメティック") : winner;
+				const duration = reverse ? 4000 : 2800;
+				reversalEffect.dataset.outcome = "normal";
+				stoppedLabels.forEach((label) => { label.textContent = winner.text; });
 				let previousStage = "hold";
 				function animateReversal() {
 					const elapsed = performance.now() - stoppedAt;
-					if (elapsed >= 4000) {
-						const cometik = shinyUnits.find((item) => item.text === "コメティック");
-						wheelItems = wheelItems.map((item, index) => index === winningIndex ? cometik : item);
+					if (elapsed >= duration) {
+						if (reverse) wheelItems = wheelItems.map((item, index) => index === winningIndex ? finalWinner : item);
 						drawWheel();
 						reversalEffect.hidden = true;
-						resultDiv.innerText = cometik.text;
-						resultDiv.style.color = cometik.color;
-						resultDiv.style.textShadow = "0 0 18px #c5a6ed";
+						resultDiv.innerText = finalWinner.text;
+						resultDiv.style.color = finalWinner.color;
+						if (reverse) resultDiv.style.textShadow = "0 0 18px #c5a6ed";
 						finishSpin();
 						return;
 					}
-					const stage = elapsed >= 2300 ? "reveal" : elapsed >= 1600 ? "strike" : elapsed >= 1000 ? "dark" : "hold";
+					const stage = reverse && elapsed >= 2300 ? "reveal" : reverse && elapsed >= 1600 ? "strike" : elapsed >= 1000 ? "dark" : "hold";
+					if (reverse && elapsed >= 1600) reversalEffect.dataset.outcome = "reverse";
 					if (elapsed >= 1000) {
 						reversalEffect.style.setProperty("--reversal-time", `${-elapsed}ms`);
 						reversalEffect.hidden = false;
@@ -611,8 +647,8 @@
 					resultDiv.style.textShadow = "2px 2px 4px rgba(0,0,0,0.15)";
 
 					cancelAnimationFrame(animationId);
-					if (winner.text === "SideM") {
-						reverseSideM(winningIndex);
+					if (activeItems !== shinyUnits) {
+						confirmBrand(winningIndex);
 					} else {
 						finishSpin();
 					}
@@ -636,15 +672,13 @@
 				reversalEffect.hidden = true;
 				clearCometEffect();
 				wheelItems = activeItems;
-				const chanceProbability = activeItems === shinyUnits
-					? unitChanceProbability
-					: brandChanceProbability;
 				const testSideMIndex = reversalTest.checked
 					? activeItems.findIndex((item) => item.text === "SideM")
 					: -1;
-				chanceSpin = testSideMIndex === -1 && Math.random() < chanceProbability;
+				chanceSpin = activeItems !== shinyUnits && testSideMIndex === -1 && Math.random() < brandChanceProbability;
 				chanceRevealed = false;
 				reversalTest.disabled = true;
+				reversalTestOutcome.disabled = true;
 				spinButton.disabled = true;
 				brandCheckboxes.forEach((cb) => { cb.disabled = true; });
 				resultDiv.innerText = "回転中...";
@@ -653,8 +687,6 @@
 
 				const winningIndex = testSideMIndex !== -1
 					? testSideMIndex
-					: chanceSpin && activeItems === shinyUnits
-					? activeItems.findIndex((item) => item.text === "コメティック")
 					: Math.floor(Math.random() * activeItems.length);
 				const fullCircle = Math.PI * 2;
 				const sliceAngle = fullCircle / activeItems.length;
