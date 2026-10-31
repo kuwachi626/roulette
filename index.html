@@ -127,9 +127,6 @@
 
 			/* スマートフォン向けのスタイル調整 */
 			[hidden] { display: none !important; }
-			#chanceControls { margin: 0 0 28px; }
-			#chanceControls label { background: #242337; color: #fff; }
-			#chanceControls p { font-size: 0.85em; color: #666; margin: 8px 0; }
 			#cometEffect {
 				position: fixed; inset: 0; z-index: 20; overflow: hidden;
 				pointer-events: none;
@@ -253,10 +250,6 @@
 				>
 			</div>
 
-			<div id="chanceControls" hidden>
-				<label><input id="chanceMode" type="checkbox" />確変モード</label>
-				<p>ONにするとコメティック確定！ 彗星が降り注ぎます。</p>
-			</div>
 			<div class="roulette-wrapper">
 				<div class="pointer"></div>
 				<canvas id="rouletteCanvas" width="360" height="360"></canvas>
@@ -277,8 +270,7 @@
 			const spinButton = document.getElementById("spinButton");
 			const rouletteTitle = document.getElementById("rouletteTitle");
 			const brandCheckboxes = document.querySelectorAll('.checkbox-group input[type="checkbox"]');
-			const chanceControls = document.getElementById("chanceControls");
-			const chanceMode = document.getElementById("chanceMode");
+			const chanceProbability = 0.2;
 			const cometEffect = document.getElementById("cometEffect");
 			const shinyUnits = [
 				{ text: "イルミネーションスターズ", color: "#fff68d" },
@@ -297,6 +289,7 @@
 			let spinStartAngle = 0;
 			let spinDistance = 0;
 			let chanceSpin = false;
+			let chanceRevealed = false;
 			let effectTimer = null;
 			let isSpinning = false;
 			let animationId = null;
@@ -313,8 +306,6 @@
 				}));
 				const isShinyOnly = activeItems.length === 1 && activeItems[0].text === "シャニ";
 				if (isShinyOnly) activeItems = shinyUnits;
-				chanceControls.hidden = !isShinyOnly;
-				if (!isShinyOnly) chanceMode.checked = false;
 				clearCometEffect();
 				rouletteTitle.textContent = isShinyOnly
 					? "シャニマス ユニットルーレット"
@@ -411,12 +402,16 @@
 				const progress = Math.min((performance.now() - spinStartedAt) / 5000, 1);
 				currentAngle = spinStartAngle + spinDistance * (1 - Math.pow(1 - progress, 4));
 				drawWheel();
+				if (chanceSpin && !chanceRevealed && progress >= 0.35 && progress < 1) {
+					chanceRevealed = true;
+					resultDiv.innerText = "コメティック確定！";
+					showCometEffect();
+				}
 
 				if (progress === 1) {
 					isSpinning = false;
 					spinButton.disabled = false;
 					brandCheckboxes.forEach((cb) => { cb.disabled = false; });
-					chanceMode.disabled = false;
 
 					const normalizedAngle = currentAngle % (Math.PI * 2);
 					const pointerAngle =
@@ -429,13 +424,11 @@
 					resultDiv.innerText = winner.text;
 					resultDiv.style.color = winner.color;
 					resultDiv.style.textShadow = "2px 2px 4px rgba(0,0,0,0.15)";
-					if (chanceSpin) showCometEffect();
 
 					cancelAnimationFrame(animationId);
 					return;
 				}
 
-				drawWheel();
 				animationId = requestAnimationFrame(animate);
 			}
 
@@ -450,8 +443,8 @@
 
 				isSpinning = true;
 				clearCometEffect();
-				chanceSpin = activeItems === shinyUnits && chanceMode.checked;
-				chanceMode.disabled = true;
+				chanceSpin = activeItems === shinyUnits && Math.random() < chanceProbability;
+				chanceRevealed = false;
 				spinButton.disabled = true;
 				brandCheckboxes.forEach((cb) => { cb.disabled = true; });
 				resultDiv.innerText = "回転中...";
