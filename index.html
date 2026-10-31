@@ -27,6 +27,12 @@
 			h2 {
 				margin-top: 0;
 			}
+			#rouletteTitle {
+				padding: 0; width: auto; background: transparent; color: inherit;
+				font: inherit; border-radius: 0; box-shadow: none; transform: none;
+				cursor: default; user-select: none; touch-action: manipulation;
+			}
+			#rouletteTitle:focus-visible { outline: 2px solid #2681c8; outline-offset: 5px; }
 			.checkbox-group {
 				display: flex;
 				flex-wrap: wrap;
@@ -259,7 +265,7 @@
 	</head>
 	<body>
 		<div class="container">
-			<h2 id="rouletteTitle">ブランド選択ルーレット</h2>
+			<h2><button id="rouletteTitle" type="button">ブランド選択ルーレット</button></h2>
 
 			<div class="checkbox-group">
 				<label
@@ -376,6 +382,36 @@
 			const reversalTestControls = document.getElementById("reversalTestControls");
 			const reversalTest = document.getElementById("reversalTest");
 			const reversalTestOutcome = document.getElementById("reversalTestOutcome");
+			let testControlsUnlocked = false;
+			let titleTapCount = 0;
+			let titleTapStartedAt = null;
+			function updateTestControls() {
+				const hasSideM = activeItems.some((item) => item.text === "SideM");
+				reversalTestControls.hidden = !testControlsUnlocked || !hasSideM;
+				if (reversalTestControls.hidden) {
+					reversalTest.checked = false;
+					reversalTestOutcome.value = "reverse";
+				}
+				reversalTestOutcome.hidden = !reversalTest.checked;
+			}
+			rouletteTitle.addEventListener("click", () => {
+				if (isSpinning) {
+					titleTapCount = 0;
+					titleTapStartedAt = null;
+					return;
+				}
+				const now = performance.now();
+				if (titleTapStartedAt === null || now - titleTapStartedAt > 3000) {
+					titleTapCount = 0;
+					titleTapStartedAt = now;
+				}
+				if (++titleTapCount === 5) {
+					testControlsUnlocked = !testControlsUnlocked;
+					titleTapCount = 0;
+					titleTapStartedAt = null;
+					updateTestControls();
+				}
+			});
 			const stoppedLabels = [document.getElementById("stoppedLabelUpper"), document.getElementById("stoppedLabelLower")];
 			reversalTest.addEventListener("change", () => {
 				reversalTestOutcome.hidden = !reversalTest.checked;
@@ -468,13 +504,7 @@
 				const isShinyOnly = activeItems.length === 1 && activeItems[0].text === "シャニ";
 				if (isShinyOnly) activeItems = shinyUnits;
 				wheelItems = activeItems;
-				const hasSideM = activeItems.some((item) => item.text === "SideM");
-				reversalTestControls.hidden = !hasSideM;
-				if (!hasSideM) {
-					reversalTest.checked = false;
-					reversalTestOutcome.value = "reverse";
-				}
-				reversalTestOutcome.hidden = !reversalTest.checked;
+				updateTestControls();
 				clearCometEffect();
 				reversalEffect.hidden = true;
 				rouletteTitle.textContent = isShinyOnly
