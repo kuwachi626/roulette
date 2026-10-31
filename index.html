@@ -94,9 +94,9 @@
 				height: 1.2em;
 				color: #333;
 				/* 長い名前でも画面からはみ出さないようにする */
-				white-space: nowrap;
-				overflow: hidden;
-				text-overflow: ellipsis;
+				min-height: 1.2em;
+				height: auto;
+				overflow-wrap: anywhere;
 			}
 			button {
 				padding: 15px 60px;
@@ -126,6 +126,36 @@
 			}
 
 			/* スマートフォン向けのスタイル調整 */
+			[hidden] { display: none !important; }
+			#chanceControls { margin: 0 0 28px; }
+			#chanceControls label { background: #242337; color: #fff; }
+			#chanceControls p { font-size: 0.85em; color: #666; margin: 8px 0; }
+			#cometEffect {
+				position: fixed; inset: 0; z-index: 20; overflow: hidden;
+				pointer-events: none;
+				background: radial-gradient(ellipse at top right, #514c8970, #101225b8);
+			}
+			.comet {
+				position: absolute; left: var(--x); top: -180px;
+				width: 4px; height: 150px; border-radius: 100%;
+				background: linear-gradient(transparent, #c5bcff 75%, white);
+				filter: drop-shadow(0 0 8px #c5bcff);
+				animation: comet-fall 1.5s var(--delay) ease-in both;
+			}
+			@keyframes comet-fall {
+				from { transform: rotate(35deg) translateY(0); opacity: 0; }
+				15% { opacity: 1; }
+				to { transform: rotate(35deg) translateY(160vh); opacity: 0; }
+			}
+			#cometMessage {
+				position: absolute; inset: 0; display: grid; place-content: center;
+				gap: 12px; color: white; text-shadow: 0 0 24px #b5a5ff;
+				font-size: clamp(1.6rem, 7vw, 3.5rem); font-weight: bold;
+			}
+			#cometMessage small { font-size: 0.45em; letter-spacing: 0.3em; }
+			@media (prefers-reduced-motion: reduce) {
+				.comet { animation: none; display: none; }
+			}
 			@media (max-width: 480px) {
 				.container {
 					padding: 20px 15px;
@@ -148,7 +178,7 @@
 	</head>
 	<body>
 		<div class="container">
-			<h2>ブランド選択ルーレット</h2>
+			<h2 id="rouletteTitle">ブランド選択ルーレット</h2>
 
 			<div class="checkbox-group">
 				<label
@@ -223,14 +253,21 @@
 				>
 			</div>
 
+			<div id="chanceControls" hidden>
+				<label><input id="chanceMode" type="checkbox" />確変モード</label>
+				<p>ONにするとコメティック確定！ 彗星が降り注ぎます。</p>
+			</div>
 			<div class="roulette-wrapper">
 				<div class="pointer"></div>
 				<canvas id="rouletteCanvas" width="360" height="360"></canvas>
 			</div>
 
-			<div id="result">？？？</div>
+			<div id="result" role="status" aria-live="polite">？？？</div>
 
 			<button id="spinButton" onclick="startRoulette()">スタート</button>
+		</div>
+		<div id="cometEffect" aria-hidden="true" hidden>
+			<div id="cometMessage"><small>確変 · CoMETIK</small><span>コメティック確定！</span></div>
 		</div>
 
 		<script>
@@ -238,10 +275,29 @@
 			const ctx = canvas.getContext("2d");
 			const resultDiv = document.getElementById("result");
 			const spinButton = document.getElementById("spinButton");
+			const rouletteTitle = document.getElementById("rouletteTitle");
+			const brandCheckboxes = document.querySelectorAll('.checkbox-group input[type="checkbox"]');
+			const chanceControls = document.getElementById("chanceControls");
+			const chanceMode = document.getElementById("chanceMode");
+			const cometEffect = document.getElementById("cometEffect");
+			const shinyUnits = [
+				{ text: "イルミネーションスターズ", color: "#fff68d" },
+				{ text: "アンティーカ", color: "#a846ab" },
+				{ text: "放課後クライマックスガールズ", color: "#f8a532" },
+				{ text: "アルストロメリア", color: "#f5b1d0" },
+				{ text: "ストレイライト", color: "#e54646" },
+				{ text: "ノクチル", color: "#87cde5" },
+				{ text: "シーズ", color: "#5ac7b5" },
+				{ text: "コメティック", color: "#666666" },
+			];
 
 			let activeItems = [];
 			let currentAngle = 0;
-			let angularVelocity = 0;
+			let spinStartedAt = 0;
+			let spinStartAngle = 0;
+			let spinDistance = 0;
+			let chanceSpin = false;
+			let effectTimer = null;
 			let isSpinning = false;
 			let animationId = null;
 
@@ -249,12 +305,23 @@
 				if (isSpinning) return;
 
 				const checkboxes = document.querySelectorAll(
-					'input[type="checkbox"]:checked',
+					'.checkbox-group input[type="checkbox"]:checked',
 				);
 				activeItems = Array.from(checkboxes).map((cb) => ({
 					text: cb.value,
 					color: cb.getAttribute("data-color"),
 				}));
+				const isShinyOnly = activeItems.length === 1 && activeItems[0].text === "シャニ";
+				if (isShinyOnly) activeItems = shinyUnits;
+				chanceControls.hidden = !isShinyOnly;
+				if (!isShinyOnly) chanceMode.checked = false;
+				clearCometEffect();
+				rouletteTitle.textContent = isShinyOnly
+					? "シャニマス ユニットルーレット"
+					: "ブランド選択ルーレット";
+				resultDiv.innerText = "？？？";
+				resultDiv.style.color = "#333";
+				resultDiv.style.textShadow = "none";
 
 				drawWheel();
 			}
@@ -303,9 +370,9 @@
 					ctx.lineJoin = "round";
 					ctx.lineWidth = 4;
 					ctx.strokeStyle = "#fff";
-					ctx.strokeText(activeItems[i].text, radius - 20, 6);
+					ctx.strokeText(activeItems[i].text, radius - 20, 6, radius - 40);
 					ctx.fillStyle = "#111";
-					ctx.fillText(activeItems[i].text, radius - 20, 6);
+					ctx.fillText(activeItems[i].text, radius - 20, 6, radius - 40);
 
 					ctx.restore();
 				}
@@ -319,15 +386,37 @@
 				ctx.stroke();
 			}
 
+			function clearCometEffect() {
+				clearTimeout(effectTimer);
+				cometEffect.hidden = true;
+				cometEffect.querySelectorAll(".comet").forEach((comet) => comet.remove());
+			}
+
+			function showCometEffect() {
+				clearCometEffect();
+				for (let i = 0; i < 24; i++) {
+					const comet = document.createElement("span");
+					comet.className = "comet";
+					comet.style.setProperty("--x", `${10 + Math.random() * 120}%`);
+					comet.style.setProperty("--delay", `${Math.random() * 1.8}s`);
+					cometEffect.appendChild(comet);
+				}
+				cometEffect.hidden = false;
+				effectTimer = setTimeout(clearCometEffect, 3600);
+			}
+
 			function animate() {
 				if (!isSpinning) return;
 
-				currentAngle += angularVelocity;
-				angularVelocity *= 0.985;
+				const progress = Math.min((performance.now() - spinStartedAt) / 5000, 1);
+				currentAngle = spinStartAngle + spinDistance * (1 - Math.pow(1 - progress, 4));
+				drawWheel();
 
-				if (angularVelocity < 0.002) {
+				if (progress === 1) {
 					isSpinning = false;
 					spinButton.disabled = false;
+					brandCheckboxes.forEach((cb) => { cb.disabled = false; });
+					chanceMode.disabled = false;
 
 					const normalizedAngle = currentAngle % (Math.PI * 2);
 					const pointerAngle =
@@ -340,6 +429,7 @@
 					resultDiv.innerText = winner.text;
 					resultDiv.style.color = winner.color;
 					resultDiv.style.textShadow = "2px 2px 4px rgba(0,0,0,0.15)";
+					if (chanceSpin) showCometEffect();
 
 					cancelAnimationFrame(animationId);
 					return;
@@ -359,12 +449,24 @@
 				if (isSpinning) return;
 
 				isSpinning = true;
+				clearCometEffect();
+				chanceSpin = activeItems === shinyUnits && chanceMode.checked;
+				chanceMode.disabled = true;
 				spinButton.disabled = true;
+				brandCheckboxes.forEach((cb) => { cb.disabled = true; });
 				resultDiv.innerText = "回転中...";
 				resultDiv.style.color = "#333";
 				resultDiv.style.textShadow = "none";
 
-				angularVelocity = Math.random() * 0.25 + 0.45;
+				const winningIndex = chanceSpin
+					? activeItems.findIndex((item) => item.text === "コメティック")
+					: Math.floor(Math.random() * activeItems.length);
+				const fullCircle = Math.PI * 2;
+				const sliceAngle = fullCircle / activeItems.length;
+				const targetAngle = (1.5 * Math.PI - (winningIndex + 0.5) * sliceAngle + fullCircle) % fullCircle;
+				spinStartAngle = currentAngle % fullCircle;
+				spinDistance = fullCircle * 6 + (targetAngle - spinStartAngle + fullCircle) % fullCircle;
+				spinStartedAt = performance.now();
 
 				animate();
 			}
