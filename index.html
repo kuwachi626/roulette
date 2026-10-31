@@ -150,8 +150,29 @@
 				font-size: clamp(1.6rem, 7vw, 3.5rem); font-weight: bold;
 			}
 			#cometMessage small { font-size: 0.45em; letter-spacing: 0.3em; }
+			#reversalEffect {
+				margin: 20px auto; max-width: 360px; padding: 16px;
+				border: 3px solid #e7c47c; border-radius: 12px;
+				background: linear-gradient(135deg, #272036, #100e18);
+				color: #ffe6a5; box-shadow: 0 0 24px #b187d980;
+			}
+			#reversalEffect strong { display: block; letter-spacing: 0.35em; margin-bottom: 12px; }
+			.slot-window {
+				height: 4rem; overflow: hidden; border-radius: 6px;
+				background: #fff; color: #282333;
+				box-shadow: inset 0 8px 12px #0003, inset 0 -8px 12px #0003;
+			}
+			.slot-reel { animation: reel-restart 1.8s cubic-bezier(0.15, 0.65, 0.2, 1) both; }
+			.slot-reel span { display: block; height: 4rem; line-height: 4rem; font-size: clamp(1.4rem, 6vw, 2rem); font-weight: bold; }
+			@keyframes reel-restart {
+				0% { transform: translateY(0); }
+				12% { transform: translateY(0.4rem); }
+				85% { transform: translateY(-20.3rem); }
+				100% { transform: translateY(-20rem); }
+			}
 			@media (prefers-reduced-motion: reduce) {
 				.comet { animation: none; display: none; }
+				.slot-reel { animation: none; transform: translateY(-20rem); }
 			}
 			@media (max-width: 480px) {
 				.container {
@@ -255,6 +276,14 @@
 				<canvas id="rouletteCanvas" width="360" height="360"></canvas>
 			</div>
 
+			<div id="reversalEffect" aria-hidden="true" hidden>
+				<strong>再 始 動</strong>
+				<div class="slot-window"><div class="slot-reel">
+					<span>SideM</span><span>コメティック</span>
+					<span>SideM</span><span>コメティック</span>
+					<span>SideM</span><span>コメティック</span>
+				</div></div>
+			</div>
 			<div id="result" role="status" aria-live="polite">？？？</div>
 
 			<button id="spinButton" onclick="startRoulette()">スタート</button>
@@ -273,6 +302,7 @@
 			const unitChanceProbability = 0.2;
 			const brandChanceProbability = 0.05;
 			const cometEffect = document.getElementById("cometEffect");
+			const reversalEffect = document.getElementById("reversalEffect");
 			const shinyUnits = [
 				{ text: "イルミネーションスターズ", color: "#fff68d" },
 				{ text: "アンティーカ", color: "#a846ab" },
@@ -310,6 +340,7 @@
 				if (isShinyOnly) activeItems = shinyUnits;
 				wheelItems = activeItems;
 				clearCometEffect();
+				reversalEffect.hidden = true;
 				rouletteTitle.textContent = isShinyOnly
 					? "シャニマス ユニットルーレット"
 					: "ブランド選択ルーレット";
@@ -399,6 +430,36 @@
 				effectTimer = setTimeout(clearCometEffect, 3600);
 			}
 
+			function finishSpin() {
+				isSpinning = false;
+				spinButton.disabled = false;
+				brandCheckboxes.forEach((cb) => { cb.disabled = false; });
+			}
+
+			function reverseSideM(winningIndex) {
+				const stoppedAt = performance.now();
+				function animateReversal() {
+					const elapsed = performance.now() - stoppedAt;
+					if (elapsed >= 900) {
+						reversalEffect.hidden = false;
+						resultDiv.innerText = "再始動…";
+					}
+					if (elapsed >= 3000) {
+						const cometik = shinyUnits.find((item) => item.text === "コメティック");
+						wheelItems = wheelItems.map((item, index) => index === winningIndex ? cometik : item);
+						drawWheel();
+						reversalEffect.hidden = true;
+						resultDiv.innerText = cometik.text;
+						resultDiv.style.color = cometik.color;
+						resultDiv.style.textShadow = "0 0 18px #c5a6ed";
+						finishSpin();
+						return;
+					}
+					animationId = requestAnimationFrame(animateReversal);
+				}
+				animationId = requestAnimationFrame(animateReversal);
+			}
+
 			function animate() {
 				if (!isSpinning) return;
 
@@ -416,9 +477,6 @@
 				drawWheel();
 
 				if (progress === 1) {
-					isSpinning = false;
-					spinButton.disabled = false;
-					brandCheckboxes.forEach((cb) => { cb.disabled = false; });
 
 					const normalizedAngle = currentAngle % (Math.PI * 2);
 					const pointerAngle =
@@ -433,6 +491,11 @@
 					resultDiv.style.textShadow = "2px 2px 4px rgba(0,0,0,0.15)";
 
 					cancelAnimationFrame(animationId);
+					if (winner.text === "SideM") {
+						reverseSideM(winningIndex);
+					} else {
+						finishSpin();
+					}
 					return;
 				}
 
@@ -449,6 +512,7 @@
 				if (isSpinning) return;
 
 				isSpinning = true;
+				reversalEffect.hidden = true;
 				clearCometEffect();
 				wheelItems = activeItems;
 				const chanceProbability = activeItems === shinyUnits
