@@ -151,29 +151,77 @@
 			}
 			#cometMessage small { font-size: 0.45em; letter-spacing: 0.3em; }
 			#reversalEffect {
-				margin: 20px auto; max-width: 360px; padding: 16px;
-				border: 3px solid #e7c47c; border-radius: 12px;
-				background: linear-gradient(135deg, #272036, #100e18);
-				color: #ffe6a5; box-shadow: 0 0 24px #b187d980;
+				position: fixed; inset: 0; z-index: 30; overflow: hidden;
+				pointer-events: none; isolation: isolate; color: #fff;
+				background: radial-gradient(ellipse at 65% 40%, #242039 0%, #070810 70%);
+				animation: reversal-darkness 4s linear both paused;
+				animation-delay: var(--reversal-time, 0ms);
 			}
-			#reversalEffect strong { display: block; letter-spacing: 0.35em; margin-bottom: 12px; }
 			#reversalTestControls { margin: 0 0 24px; }
-			.slot-window {
-				height: 4rem; overflow: hidden; border-radius: 6px;
-				background: #fff; color: #282333;
-				box-shadow: inset 0 8px 12px #0003, inset 0 -8px 12px #0003;
+			#soundControls { margin: 20px 0 0; font-size: 0.85rem; }
+			.reversal-sidem, .reversal-title {
+				position: absolute; inset: 0; display: grid; place-content: center;
+				font-weight: 900;
 			}
-			.slot-reel { animation: reel-restart 1.8s cubic-bezier(0.15, 0.65, 0.2, 1) both; }
-			.slot-reel span { display: block; height: 4rem; line-height: 4rem; font-size: clamp(1.4rem, 6vw, 2rem); font-weight: bold; }
-			@keyframes reel-restart {
-				0% { transform: translateY(0); }
-				12% { transform: translateY(0.4rem); }
-				85% { transform: translateY(-20.3rem); }
-				100% { transform: translateY(-20rem); }
+			.reversal-sidem {
+				font-size: clamp(4rem, 19vw, 12rem); color: #78958e;
+				letter-spacing: -0.06em;
+				animation: reversal-split 4s linear both paused;
+			}
+			.reversal-sidem.upper { clip-path: polygon(0 0, 100% 0, 100% 30%, 0 70%); --split: -1; }
+			.reversal-sidem.lower { clip-path: polygon(0 70%, 100% 30%, 100% 100%, 0 100%); --split: 1; }
+			.reversal-comet {
+				position: absolute; left: 115%; top: 12%; width: 16px; height: 16px;
+				border-radius: 50%; background: #fff;
+				box-shadow: 0 0 18px 8px #fff, 0 0 65px 24px #a38aff;
+				animation: reversal-strike 4s linear both paused;
+			}
+			.reversal-comet::after {
+				content: ""; position: absolute; left: 0; top: 3px;
+				width: 90vmax; height: 10px; transform-origin: left center;
+				transform: rotate(-30deg); border-radius: 50%;
+				background: linear-gradient(90deg, white, #b3a0ffbb 30%, transparent);
+				filter: drop-shadow(0 0 12px #baa5ff);
+			}
+			.reversal-aura {
+				position: absolute; inset: -30%; border-radius: 50%;
+				background: radial-gradient(ellipse, #c8bbff55, #5e458c25 35%, transparent 65%);
+				animation: reversal-bloom 4s ease-out both paused;
+			}
+			.reversal-title { gap: 12px; text-align: center; animation: reversal-reveal 4s linear both paused; }
+			.reversal-title small { font-size: clamp(0.75rem, 2vw, 1rem); letter-spacing: 0.65em; padding-left: 0.65em; color: #d6cef3; }
+			.reversal-title strong {
+				font-size: clamp(3.4rem, 15vw, 10rem); letter-spacing: -0.055em;
+				line-height: 1.05; font-style: italic; padding: 0 0.12em;
+				text-shadow: 0 0 35px #b99aef88;
+			}
+			.reversal-title span { font-size: clamp(1.25rem, 5vw, 2rem); letter-spacing: 0.15em; }
+			#reversalEffect > * { animation-delay: var(--reversal-time, 0ms); }
+			@keyframes reversal-darkness {
+				0%, 25% { opacity: 0; } 38%, 87.5% { opacity: 1; } 100% { opacity: 0; }
+			}
+			@keyframes reversal-split {
+				0%, 25% { opacity: 1; transform: translate(0, 0); }
+				40% { opacity: 0.65; transform: translate(0, 0); }
+				57.5%, 100% { opacity: 0; transform: translate(calc(var(--split) * 12vw), calc(var(--split) * 8vh)); }
+			}
+			@keyframes reversal-strike {
+				0%, 40% { opacity: 0; transform: translate(0, 0); }
+				42% { opacity: 1; }
+				57.5%, 100% { opacity: 0; transform: translate(-145vw, 80vh); }
+			}
+			@keyframes reversal-bloom {
+				0%, 55% { opacity: 0; transform: scale(0.3); }
+				65%, 100% { opacity: 1; transform: scale(1); }
+			}
+			@keyframes reversal-reveal {
+				0%, 57% { opacity: 0; transform: scale(1.18); filter: blur(12px); }
+				64%, 100% { opacity: 1; transform: scale(1); filter: blur(0); }
 			}
 			@media (prefers-reduced-motion: reduce) {
 				.comet { animation: none; display: none; }
-				.slot-reel { animation: none; transform: translateY(-20rem); }
+				.reversal-comet { display: none; }
+				.reversal-sidem, .reversal-title, .reversal-aura { transform: none !important; filter: none !important; }
 			}
 			@media (max-width: 480px) {
 				.container {
@@ -280,17 +328,17 @@
 				<canvas id="rouletteCanvas" width="360" height="360"></canvas>
 			</div>
 
-			<div id="reversalEffect" aria-hidden="true" hidden>
-				<strong>再 始 動</strong>
-				<div class="slot-window"><div class="slot-reel">
-					<span>SideM</span><span>コメティック</span>
-					<span>SideM</span><span>コメティック</span>
-					<span>SideM</span><span>コメティック</span>
-				</div></div>
-			</div>
 			<div id="result" role="status" aria-live="polite">？？？</div>
 
 			<button id="spinButton" onclick="startRoulette()">スタート</button>
+			<div id="soundControls"><label><input id="soundEnabled" type="checkbox" checked />効果音</label></div>
+		</div>
+		<div id="reversalEffect" aria-hidden="true" hidden>
+			<div class="reversal-sidem upper">SideM</div>
+			<div class="reversal-sidem lower">SideM</div>
+			<div class="reversal-comet"></div>
+			<div class="reversal-aura"></div>
+			<div class="reversal-title"><small>THE COMET HAS ARRIVED</small><strong>CoMETIK</strong><span>コメティック</span></div>
 		</div>
 		<div id="cometEffect" aria-hidden="true" hidden>
 			<div id="cometMessage"><small>確変 · CoMETIK</small><span>コメティック確定！</span></div>
@@ -309,6 +357,58 @@
 			const reversalEffect = document.getElementById("reversalEffect");
 			const reversalTestControls = document.getElementById("reversalTestControls");
 			const reversalTest = document.getElementById("reversalTest");
+			const soundEnabled = document.getElementById("soundEnabled");
+			let audioContext = null;
+			let audioMaster = null;
+			try { soundEnabled.checked = localStorage.getItem("roulette-sound") !== "off"; } catch {}
+			soundEnabled.addEventListener("change", () => {
+				try { localStorage.setItem("roulette-sound", soundEnabled.checked ? "on" : "off"); } catch {}
+				if (audioMaster) audioMaster.gain.value = soundEnabled.checked ? 0.25 : 0;
+				if (soundEnabled.checked) initializeAudio();
+			});
+
+			function initializeAudio() {
+				if (!soundEnabled.checked) return;
+				try {
+					const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+					if (!AudioContextClass) return;
+					if (!audioContext) {
+						audioContext = new AudioContextClass();
+						audioMaster = audioContext.createGain();
+						audioMaster.gain.value = 0.25;
+						audioMaster.connect(audioContext.destination);
+					}
+					if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+				} catch { /* 音声を利用できなくても抽選は続ける。 */ }
+			}
+
+			function playReversalSound(stage) {
+				if (!soundEnabled.checked || !audioContext || audioContext.state !== "running" || !audioMaster) return;
+				try {
+					const now = audioContext.currentTime;
+					const tone = (frequency, endFrequency, duration, offset = 0, type = "sine") => {
+						const oscillator = audioContext.createOscillator();
+						const gain = audioContext.createGain();
+						oscillator.type = type;
+						oscillator.frequency.setValueAtTime(frequency, now + offset);
+						oscillator.frequency.exponentialRampToValueAtTime(endFrequency, now + offset + duration);
+						gain.gain.setValueAtTime(0, now + offset);
+						gain.gain.linearRampToValueAtTime(0.35, now + offset + 0.025);
+						gain.gain.exponentialRampToValueAtTime(0.001, now + offset + duration);
+						oscillator.connect(gain); gain.connect(audioMaster);
+						oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+						oscillator.start(now + offset); oscillator.stop(now + offset + duration);
+					};
+					if (stage === "dark") tone(85, 35, 0.55);
+					if (stage === "strike") {
+						tone(1800, 90, 0.65, 0, "triangle");
+						tone(300, 1200, 0.45, 0, "sine");
+					}
+					if (stage === "reveal") {
+						[523.25, 659.25, 783.99, 1046.5].forEach((frequency, index) => tone(frequency, frequency, 0.8, index * 0.065, "triangle"));
+					}
+				} catch { /* 効果音の失敗で演出を止めない。 */ }
+			}
 			const shinyUnits = [
 				{ text: "イルミネーションスターズ", color: "#fff68d" },
 				{ text: "アンティーカ", color: "#a846ab" },
@@ -448,13 +548,10 @@
 
 			function reverseSideM(winningIndex) {
 				const stoppedAt = performance.now();
+				let previousStage = "hold";
 				function animateReversal() {
 					const elapsed = performance.now() - stoppedAt;
-					if (elapsed >= 900) {
-						reversalEffect.hidden = false;
-						resultDiv.innerText = "再始動…";
-					}
-					if (elapsed >= 3000) {
+					if (elapsed >= 4000) {
 						const cometik = shinyUnits.find((item) => item.text === "コメティック");
 						wheelItems = wheelItems.map((item, index) => index === winningIndex ? cometik : item);
 						drawWheel();
@@ -464,6 +561,19 @@
 						resultDiv.style.textShadow = "0 0 18px #c5a6ed";
 						finishSpin();
 						return;
+					}
+					const stage = elapsed >= 2300 ? "reveal" : elapsed >= 1600 ? "strike" : elapsed >= 1000 ? "dark" : "hold";
+					if (elapsed >= 1000) {
+						reversalEffect.style.setProperty("--reversal-time", `${-elapsed}ms`);
+						reversalEffect.hidden = false;
+					}
+					if (stage !== previousStage) {
+						playReversalSound(stage);
+						if (stage === "reveal") {
+							resultDiv.innerText = "コメティック";
+							resultDiv.style.color = "#666666";
+						}
+						previousStage = stage;
 					}
 					animationId = requestAnimationFrame(animateReversal);
 				}
@@ -520,6 +630,7 @@
 					return;
 				}
 				if (isSpinning) return;
+				initializeAudio();
 
 				isSpinning = true;
 				reversalEffect.hidden = true;
