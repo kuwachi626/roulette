@@ -270,7 +270,8 @@
 			const spinButton = document.getElementById("spinButton");
 			const rouletteTitle = document.getElementById("rouletteTitle");
 			const brandCheckboxes = document.querySelectorAll('.checkbox-group input[type="checkbox"]');
-			const chanceProbability = 0.2;
+			const unitChanceProbability = 0.2;
+			const brandChanceProbability = 0.05;
 			const cometEffect = document.getElementById("cometEffect");
 			const shinyUnits = [
 				{ text: "イルミネーションスターズ", color: "#fff68d" },
@@ -450,6 +451,9 @@
 				isSpinning = true;
 				clearCometEffect();
 				wheelItems = activeItems;
+				const chanceProbability = activeItems === shinyUnits
+					? unitChanceProbability
+					: brandChanceProbability;
 				chanceSpin = Math.random() < chanceProbability;
 				chanceRevealed = false;
 				spinButton.disabled = true;
