@@ -57,10 +57,44 @@ function setup({ savedSound = null, audio = true, storageFails = false } = {}) {
 	return {
 		ids, boxes, run, tones, storage,
 		roll(value) { roll = value; },
+		elapse(ms) { now += ms; },
 		tick(ms) { now += ms; callback(); },
 		select(values) { boxes.forEach(box => box.checked = values.includes(box.value)); run("updateRoulette()"); },
 	};
 }
+
+test("test controls require five title taps within three seconds and hide safely", () => {
+	const app = setup();
+	const { ids } = app;
+	const tap = () => ids.rouletteTitle.listeners.click();
+	assert.equal(ids.reversalTestControls.hidden, true);
+	for (let i = 0; i < 4; i++) tap();
+	assert.equal(ids.reversalTestControls.hidden, true);
+	app.elapse(3001); tap();
+	assert.equal(ids.reversalTestControls.hidden, true, "expired taps are discarded");
+	for (let i = 0; i < 4; i++) tap();
+	assert.equal(ids.reversalTestControls.hidden, false);
+	ids.reversalTest.checked = true;
+	ids.reversalTestOutcome.value = "keep";
+	ids.reversalTest.listeners.change();
+	for (let i = 0; i < 5; i++) tap();
+	assert.equal(ids.reversalTestControls.hidden, true);
+	assert.equal(ids.reversalTest.checked, false);
+	assert.equal(ids.reversalTestOutcome.value, "reverse");
+	assert.equal(ids.reversalTestOutcome.hidden, true);
+	for (let i = 0; i < 5; i++) tap();
+	app.select(["シャニ"]);
+	assert.equal(ids.reversalTestControls.hidden, true);
+	app.select(["ALL", "SideM"]);
+	assert.equal(ids.reversalTestControls.hidden, false, "unlock lasts only for the current page");
+	app.run("startRoulette()");
+	for (let i = 0; i < 5; i++) tap();
+	assert.equal(ids.reversalTestControls.hidden, false, "ignore taps while drawing");
+	app.tick(5000); app.tick(2800);
+	for (let i = 0; i < 5; i++) tap();
+	assert.equal(ids.reversalTestControls.hidden, true);
+	assert.equal(setup().ids.reversalTestControls.hidden, true, "fresh page starts hidden");
+});
 
 test("SideM holds, darkens, strikes, reveals and restores controls on one timeline", () => {
 	const app = setup();
