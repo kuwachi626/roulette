@@ -284,6 +284,7 @@
 			];
 
 			let activeItems = [];
+			let wheelItems = [];
 			let currentAngle = 0;
 			let spinStartedAt = 0;
 			let spinStartAngle = 0;
@@ -306,6 +307,7 @@
 				}));
 				const isShinyOnly = activeItems.length === 1 && activeItems[0].text === "シャニ";
 				if (isShinyOnly) activeItems = shinyUnits;
+				wheelItems = activeItems;
 				clearCometEffect();
 				rouletteTitle.textContent = isShinyOnly
 					? "シャニマス ユニットルーレット"
@@ -324,7 +326,7 @@
 
 				ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-				if (activeItems.length === 0) {
+				if (wheelItems.length === 0) {
 					ctx.fillStyle = "#ccc";
 					ctx.beginPath();
 					ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
@@ -336,9 +338,9 @@
 					return;
 				}
 
-				const sliceAngle = (Math.PI * 2) / activeItems.length;
+				const sliceAngle = (Math.PI * 2) / wheelItems.length;
 
-				for (let i = 0; i < activeItems.length; i++) {
+				for (let i = 0; i < wheelItems.length; i++) {
 					const startAngle = currentAngle + i * sliceAngle;
 					const endAngle = startAngle + sliceAngle;
 
@@ -346,7 +348,7 @@
 					ctx.moveTo(centerX, centerY);
 					ctx.arc(centerX, centerY, radius, startAngle, endAngle);
 					ctx.closePath();
-					ctx.fillStyle = activeItems[i].color;
+					ctx.fillStyle = wheelItems[i].color;
 					ctx.fill();
 					ctx.strokeStyle = "#fff";
 					ctx.lineWidth = 2;
@@ -361,9 +363,9 @@
 					ctx.lineJoin = "round";
 					ctx.lineWidth = 4;
 					ctx.strokeStyle = "#fff";
-					ctx.strokeText(activeItems[i].text, radius - 20, 6, radius - 40);
+					ctx.strokeText(wheelItems[i].text, radius - 20, 6, radius - 40);
 					ctx.fillStyle = "#111";
-					ctx.fillText(activeItems[i].text, radius - 20, 6, radius - 40);
+					ctx.fillText(wheelItems[i].text, radius - 20, 6, radius - 40);
 
 					ctx.restore();
 				}
@@ -401,12 +403,16 @@
 
 				const progress = Math.min((performance.now() - spinStartedAt) / 5000, 1);
 				currentAngle = spinStartAngle + spinDistance * (1 - Math.pow(1 - progress, 4));
-				drawWheel();
-				if (chanceSpin && !chanceRevealed && progress >= 0.35 && progress < 1) {
+				if (chanceSpin && !chanceRevealed && progress >= 0.35) {
 					chanceRevealed = true;
+					if (activeItems !== shinyUnits) {
+						// 彗星の到来でブランド盤面もコメティックに変化する。
+						wheelItems = activeItems.map(() => shinyUnits.find((item) => item.text === "コメティック"));
+					}
 					resultDiv.innerText = "コメティック確定！";
-					showCometEffect();
+					if (progress < 1) showCometEffect();
 				}
+				drawWheel();
 
 				if (progress === 1) {
 					isSpinning = false;
@@ -417,10 +423,10 @@
 					const pointerAngle =
 						(1.5 * Math.PI - normalizedAngle + Math.PI * 2) %
 						(Math.PI * 2);
-					const sliceAngle = (Math.PI * 2) / activeItems.length;
+					const sliceAngle = (Math.PI * 2) / wheelItems.length;
 					const winningIndex = Math.floor(pointerAngle / sliceAngle);
 
-					const winner = activeItems[winningIndex];
+					const winner = wheelItems[winningIndex];
 					resultDiv.innerText = winner.text;
 					resultDiv.style.color = winner.color;
 					resultDiv.style.textShadow = "2px 2px 4px rgba(0,0,0,0.15)";
@@ -443,7 +449,8 @@
 
 				isSpinning = true;
 				clearCometEffect();
-				chanceSpin = activeItems === shinyUnits && Math.random() < chanceProbability;
+				wheelItems = activeItems;
+				chanceSpin = Math.random() < chanceProbability;
 				chanceRevealed = false;
 				spinButton.disabled = true;
 				brandCheckboxes.forEach((cb) => { cb.disabled = true; });
@@ -451,7 +458,7 @@
 				resultDiv.style.color = "#333";
 				resultDiv.style.textShadow = "none";
 
-				const winningIndex = chanceSpin
+				const winningIndex = chanceSpin && activeItems === shinyUnits
 					? activeItems.findIndex((item) => item.text === "コメティック")
 					: Math.floor(Math.random() * activeItems.length);
 				const fullCircle = Math.PI * 2;
