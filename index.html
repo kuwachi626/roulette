@@ -157,6 +157,7 @@
 				color: #ffe6a5; box-shadow: 0 0 24px #b187d980;
 			}
 			#reversalEffect strong { display: block; letter-spacing: 0.35em; margin-bottom: 12px; }
+			#reversalTestControls { margin: 0 0 24px; }
 			.slot-window {
 				height: 4rem; overflow: hidden; border-radius: 6px;
 				background: #fff; color: #282333;
@@ -271,6 +272,9 @@
 				>
 			</div>
 
+			<div id="reversalTestControls" hidden>
+				<label><input id="reversalTest" type="checkbox" />SideM → コメティック 演出テスト</label>
+			</div>
 			<div class="roulette-wrapper">
 				<div class="pointer"></div>
 				<canvas id="rouletteCanvas" width="360" height="360"></canvas>
@@ -303,6 +307,8 @@
 			const brandChanceProbability = 0.05;
 			const cometEffect = document.getElementById("cometEffect");
 			const reversalEffect = document.getElementById("reversalEffect");
+			const reversalTestControls = document.getElementById("reversalTestControls");
+			const reversalTest = document.getElementById("reversalTest");
 			const shinyUnits = [
 				{ text: "イルミネーションスターズ", color: "#fff68d" },
 				{ text: "アンティーカ", color: "#a846ab" },
@@ -339,6 +345,9 @@
 				const isShinyOnly = activeItems.length === 1 && activeItems[0].text === "シャニ";
 				if (isShinyOnly) activeItems = shinyUnits;
 				wheelItems = activeItems;
+				const hasSideM = activeItems.some((item) => item.text === "SideM");
+				reversalTestControls.hidden = !hasSideM;
+				if (!hasSideM) reversalTest.checked = false;
 				clearCometEffect();
 				reversalEffect.hidden = true;
 				rouletteTitle.textContent = isShinyOnly
@@ -432,6 +441,7 @@
 
 			function finishSpin() {
 				isSpinning = false;
+				reversalTest.disabled = false;
 				spinButton.disabled = false;
 				brandCheckboxes.forEach((cb) => { cb.disabled = false; });
 			}
@@ -518,15 +528,21 @@
 				const chanceProbability = activeItems === shinyUnits
 					? unitChanceProbability
 					: brandChanceProbability;
-				chanceSpin = Math.random() < chanceProbability;
+				const testSideMIndex = reversalTest.checked
+					? activeItems.findIndex((item) => item.text === "SideM")
+					: -1;
+				chanceSpin = testSideMIndex === -1 && Math.random() < chanceProbability;
 				chanceRevealed = false;
+				reversalTest.disabled = true;
 				spinButton.disabled = true;
 				brandCheckboxes.forEach((cb) => { cb.disabled = true; });
 				resultDiv.innerText = "回転中...";
 				resultDiv.style.color = "#333";
 				resultDiv.style.textShadow = "none";
 
-				const winningIndex = chanceSpin && activeItems === shinyUnits
+				const winningIndex = testSideMIndex !== -1
+					? testSideMIndex
+					: chanceSpin && activeItems === shinyUnits
 					? activeItems.findIndex((item) => item.text === "コメティック")
 					: Math.floor(Math.random() * activeItems.length);
 				const fullCircle = Math.PI * 2;
